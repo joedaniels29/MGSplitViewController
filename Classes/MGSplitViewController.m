@@ -441,7 +441,10 @@
 	} else if ([_cornerViews count] == 2) {
 		leadingCorners = [_cornerViews objectAtIndex:0];
 		trailingCorners = [_cornerViews objectAtIndex:1];
-	}
+	} else {
+        leadingCorners = nil;
+        trailingCorners = nil;
+    }
 	
 	// Configure and layout the corner-views.
 	leadingCorners.cornersPosition = (_vertical) ? MGCornersPositionLeadingVertical : MGCornersPositionLeadingHorizontal;
@@ -1087,7 +1090,9 @@
 		cornerRadius = MG_PANESPLITTER_CORNER_RADIUS;
 		_splitWidth = MG_PANESPLITTER_SPLIT_WIDTH;
 		self.allowsDraggingDivider = YES;
-	}
+	} else {
+        cornerRadius = 0;
+    }
 	
 	// Update divider and corners.
 	[_dividerView setNeedsDisplay];
