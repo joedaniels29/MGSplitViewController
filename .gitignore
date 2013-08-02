@@ -2,3 +2,4 @@
 *.perspectivev3
 build
 
+.idea/
