@@ -18,7 +18,7 @@
 #define MG_PANESPLITTER_CORNER_RADIUS	0.0		// corner-radius of split-inner corners for MGSplitViewDividerStylePaneSplitter style.
 #define MG_PANESPLITTER_SPLIT_WIDTH		25.0	// width of split-gutter for MGSplitViewDividerStylePaneSplitter style.
 
-#define MG_MIN_VIEW_WIDTH				200.0	// minimum width a view is allowed to become as a result of changing the splitPosition.
+#define MG_MIN_VIEW_WIDTH				200.0f	// minimum width a view is allowed to become as a result of changing the splitPosition.
 
 #define MG_ANIMATION_CHANGE_SPLIT_ORIENTATION	@"ChangeSplitOrientation"	// Animation ID for internal use.
 #define MG_ANIMATION_CHANGE_SUBVIEWS_ORDER		@"ChangeSubviewsOrder"	// Animation ID for internal use.
@@ -165,7 +165,15 @@
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation
 {
-    return YES;
+    if (self.masterViewController && self.detailViewController) {
+        return [self.masterViewController shouldAutorotateToInterfaceOrientation:interfaceOrientation] && [self.detailViewController shouldAutorotateToInterfaceOrientation:interfaceOrientation];
+    } else if (self.masterViewController) {
+        return [self.masterViewController shouldAutorotateToInterfaceOrientation:interfaceOrientation];
+    } else if (self.detailViewController) {
+        return [self.detailViewController shouldAutorotateToInterfaceOrientation:interfaceOrientation];
+    } else {
+        return YES;
+    }
 }
 
 
@@ -199,6 +207,8 @@
 	[self layoutSubviewsForInterfaceOrientation:toInterfaceOrientation withAnimation:YES];
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-implementations"
 
 - (void)willAnimateFirstHalfOfRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration
 {
@@ -219,6 +229,7 @@
 	[self.masterViewController willAnimateSecondHalfOfRotationFromInterfaceOrientation:fromInterfaceOrientation duration:duration];
 	[self.detailViewController willAnimateSecondHalfOfRotationFromInterfaceOrientation:fromInterfaceOrientation duration:duration];
 }
+#pragma clang diagnostic pop
 
 
 - (CGSize)splitViewSizeForOrientation:(UIInterfaceOrientation)theOrientation
@@ -438,7 +449,10 @@
 	} else if ([_cornerViews count] == 2) {
 		leadingCorners = [_cornerViews objectAtIndex:0];
 		trailingCorners = [_cornerViews objectAtIndex:1];
-	}
+	} else {
+        leadingCorners = nil;
+        trailingCorners = nil;
+    }
 	
 	// Configure and layout the corner-views.
 	leadingCorners.cornersPosition = (_vertical) ? MGCornersPositionLeadingVertical : MGCornersPositionLeadingHorizontal;
@@ -450,7 +464,7 @@
 	CGRect leadingRect, trailingRect;
 	float radius = leadingCorners.cornerRadius;
 	if (_vertical) { // left/right split
-		cornersWidth = (radius * 2.0) + _splitWidth;
+		cornersWidth = (radius * 2.0f) + _splitWidth;
 		cornersHeight = radius;
 		x = ((shouldShowMaster) ? ((masterFirst) ? _splitPosition : width - (_splitPosition + _splitWidth)) : (0 - _splitWidth)) - radius;
 		y = 0;
@@ -461,7 +475,7 @@
 		x = 0;
 		y = ((shouldShowMaster) ? ((masterFirst) ? _splitPosition : height - (_splitPosition + _splitWidth)) : (0 - _splitWidth)) - radius;
 		cornersWidth = radius;
-		cornersHeight = (radius * 2.0) + _splitWidth;
+		cornersHeight = (radius * 2.0f) + _splitWidth;
 		leadingRect = CGRectMake(x, y, cornersWidth, cornersHeight); // left corners
 		trailingRect = CGRectMake((width - cornersWidth), y, cornersWidth, cornersHeight); // right corners
 	}
@@ -575,8 +589,14 @@
 		}
 		
 	} else if (!inPopover && _hiddenPopoverController && _barButtonItem) {
-		// I know this looks strange, but it fixes a bizarre issue with UIPopoverController leaving masterViewController's views in disarray.
-		[_hiddenPopoverController presentPopoverFromRect:CGRectZero inView:self.view permittedArrowDirections:UIPopoverArrowDirectionAny animated:NO];
+        // on iOS 5.1, passing a CGRectZero here produces this following ominous message:
+        // -[UIPopoverController presentPopoverFromRect:inView:permittedArrowDirections:animated:]: the rect passed in to this method must have non-zero width and height. This will be an exception in a future release.
+        // this workaround was tested thusly:
+        // On iOS 4.3, CGRectZero leaves a popover afterimage before rotation, so does the code below
+        // On iOS 5.0, CGRectZero leaves a popover afterimage before rotation, the code below does not
+        // On iOS 5.1, CGRectZero leaves a popover afterimage before rotation, so does the code below
+        // Basically, this hack performs slightly better than the CGRectZero hack, and does not cause an ominous warning.
+        [_hiddenPopoverController presentPopoverFromRect:CGRectMake(-2000, -2000, 1, 1) inView:self.view permittedArrowDirections:UIPopoverArrowDirectionAny animated:NO];
 		
 		// Remove master from popover and destroy popover, if it exists.
 		[_hiddenPopoverController dismissPopoverAnimated:NO];
@@ -935,7 +955,7 @@
 - (UIViewController *)masterViewController
 {
 	if (_viewControllers && [_viewControllers count] > 0) {
-		NSObject *controller = [_viewControllers objectAtIndex:0];
+		UIViewController *controller = [_viewControllers objectAtIndex:0];
 		if ([controller isKindOfClass:[UIViewController class]]) {
 			return [[controller retain] autorelease];
 		}
@@ -977,7 +997,7 @@
 - (UIViewController *)detailViewController
 {
 	if (_viewControllers && [_viewControllers count] > 1) {
-		NSObject *controller = [_viewControllers objectAtIndex:1];
+		UIViewController *controller = [_viewControllers objectAtIndex:1];
 		if ([controller isKindOfClass:[UIViewController class]]) {
 			return [[controller retain] autorelease];
 		}
@@ -1078,7 +1098,9 @@
 		cornerRadius = MG_PANESPLITTER_CORNER_RADIUS;
 		_splitWidth = MG_PANESPLITTER_SPLIT_WIDTH;
 		self.allowsDraggingDivider = YES;
-	}
+	} else {
+        cornerRadius = 0;
+    }
 	
 	// Update divider and corners.
 	[_dividerView setNeedsDisplay];
