@@ -11,6 +11,9 @@
 CGFloat deg2Rad(CGFloat degrees);
 CGFloat rad2Deg(CGFloat radians);
 
+double deg2Rad(double degrees);
+double rad2Deg(double radians);
+
 @implementation MGSplitCornersView
 
 
